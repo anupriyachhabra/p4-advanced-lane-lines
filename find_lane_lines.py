@@ -496,7 +496,7 @@ def pipeline(image, image_name = ''):
     color_warped = np.dstack((warped, warped, warped))
     binresult = cv2.addWeighted(color_warped, 0.7, color_binary, 1, 0)
     if image_name :
-        cv2.imwrite('output_images/lane_lines_detected/'+image_name, binresult)
+        cv2.imwrite('output_images/lane_lines_pixels/'+image_name, binresult)
 
     # Unwarp slides back to image space
     unwarp_copy1 = cv2.warpPerspective(warp_copy1, Minv,
@@ -539,10 +539,13 @@ def pipeline(image, image_name = ''):
     # Create a mask to fill the area between the left and right lines
     cv2.fillPoly(line_drawn2, pts, 255)
 
+    if image_name :
+        cv2.imwrite('output_images/lane_lines_detected/'+image_name, line_drawn2)
+
     # Create some color images to show lane detection
     # First, just a green polygon covering the lane area
     lane_unwarp = np.dstack((line_drawn1, line_drawn2, line_drawn3)).astype('uint8')
-    # Show the left lane pixels in red and the right lane pixels in blue (or vice versa in BGR space)
+    # Show the left lane pixels in blue and the right lane pixels in red
     leftright_unwarp = np.dstack((unwarp_copy2, line_drawn1, unwarp_copy3)).astype('uint8')
     # Paint the lines and lane area back on the road
     line_result = cv2.addWeighted(dst, 1, lane_unwarp, 0.3, 0)

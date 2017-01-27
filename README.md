@@ -14,11 +14,13 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./output_images/camera_cal/calibration1.png "Undistorted"
+[image1]: ./output_images/camera_cal/calibration1.jpg "Undistorted"
 [image2]: ./output_images/distortion_correction/test1.jpg "Road Transformed"
 [image3]: ./output_images/thresholded_binary/test1.jpg "Binary Thresholded Image"
 [image4]: ./output_images/perspective_transform/test1.jpg "Warped Image"
 [image5]: ./output_images/final_output/test1.jpg "Fit Visual"
+[image6]: ./output_images/lane_lines_pixels/test1.jpg "Lane Line pixels "
+[image7]: ./output_images/lane_lines_detected/test1.jpg "Lane Lines detected"
 [video1]: ./project_video_output.mp4 "Fit Visual"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
@@ -96,12 +98,24 @@ Above is just the output of first test image , rest of the perspective transform
 
 
 ####4. Have lane line pixels been identified in the rectified image and fit with a polynomial?
-I have identified lane pixels
+- I have identified lane pixels using a histogram of hot pixels and used a sliding window approach to find the best fit around the previously found pixels.
+- Following is an image with detected lane pixels for left and right lanes
+
+![alt text][image6]
+Above is just the output of first test image , rest of the images with lane pixels detected are in folder [warped images](./output_images/lane_lines_pixels)
+
+- Next I have found the min and max points from left and right lines and combined them using to draw an area of lane lines as follows
+![alt text][image6]
+Above is just the output of first test image , rest of the images with lane area drawn are in folder [warped images](./output_images/lane_lines_detected)
+
+
+####5. Having identified the lane lines, has the radius of curvature of the road been estimated? And the position of the vehicle with respect to center in the lane?
+- Yes I have used the techniques used in Lecture 34 , Measuring Curvature to find the lane curvature and plot it on the image.
+- Following is an image with lane curvature marked. This is also the final step of the pipeline
 
 ![alt text][image5]
 
-####5. Having identified the lane lines, has the radius of curvature of the road been estimated? And the position of the vehicle with respect to center in the lane?
-
+Above is just the output of first test image , rest of the images with lane area drawn are in folder [warped images](./output_images/final_output)
 
 
 ###Pipeline (video)
@@ -116,11 +130,22 @@ Yes, here's a [link to my video result](./project_video_output.mp4)
 
 ####1. Has a README file been included that describes in detail the steps taken to construct the pipeline, techniques used, areas where improvements could be made?
 
-Yes
+Yes, this is the file.
 
 
 ---
 ##Discussion
 
 Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.
+
+- I could not detect anything useful from sobelx or sobely or magnitude gradient initially when I was using rgb color space.
+- Converting to hls space made the work a lot easier for me
+- I also faced some issues with deciding the source and destination points for perspective transform.
+- Then I used the source and destination points from the example write up and they worked for me.
+- Initially I had not used a region of interest mask, but when I was plotting a histogram of hot pixels I was getting lot of outlier points.
+- So I put in a region of interest, initially I only put it before finding lane pixels, but then I put it in the beginning of pipeline and I found that this improved
+my results a lot.
+- As I have used some hardcoded points, my pipeline will fail for images with different width and height to the current test images and pipeline.
+- If possible I would like to make the pipeline more robust for any image size.
+
 
