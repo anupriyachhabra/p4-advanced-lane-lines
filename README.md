@@ -102,11 +102,11 @@ Above is just the output of first test image , rest of the perspective transform
 - Following is an image with detected lane pixels for left and right lanes
 
 ![alt text][image6]
-Above is just the output of first test image , rest of the images with lane pixels detected are in folder [warped images](./output_images/lane_lines_pixels)
+Above is just the output of first test image , rest of the images with lane pixels detected are in folder [lane line pixels](./output_images/lane_lines_pixels)
 
 - Next I have found the min and max points from left and right lines and combined them using to draw an area of lane lines as follows
-![alt text][image6]
-Above is just the output of first test image , rest of the images with lane area drawn are in folder [warped images](./output_images/lane_lines_detected)
+![alt text][image7]
+Above is just the output of first test image , rest of the images with lane area drawn are in folder [lane area drawn](./output_images/lane_lines_detected)
 
 
 ####5. Having identified the lane lines, has the radius of curvature of the road been estimated? And the position of the vehicle with respect to center in the lane?
