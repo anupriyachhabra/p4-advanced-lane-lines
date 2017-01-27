@@ -3,7 +3,6 @@ import cv2
 import glob
 import pickle
 import os.path
-import matplotlib.image as mpimg
 from  Line import *
 from moviepy.editor import VideoFileClip
 
@@ -115,7 +114,6 @@ def find_line_pixels(binimg):
 
     else:
         # Search the lower left quadrant of the image for the left line base
-        print('initializing search for left line...')
         counts = np.sum(binimg[ymid:, 0:xmid], axis=0) #histogram of hot pixels in each column of pixels
         smooth_counts = np.convolve(counts, np.ones(search_smooth)/search_smooth, mode='same') #boxcar smooth
         line_cen = np.argmax(smooth_counts)
@@ -148,7 +146,7 @@ def find_line_pixels(binimg):
         # Search the lower left quadrant of the image for the left line base
         print('initializing search for the right line...')
         counts = np.sum(binimg[ymid:, xmid:], axis=0) #histogram of hot pixels in each column of pixels
-        smooth_counts = np.convolve(counts, np.ones(search_smooth)/search_smooth, mode='same') #boxcar smooth
+        smooth_counts = np.convolve(counts, np.ones(search_smooth)/search_smooth, mode='same')
         line_cen = np.argmax(smooth_counts) + xmid
         prightx = [line_cen - margin, line_cen + margin]
         good_inds = line_search(nonzerox, nonzeroy, prightx, ystart_frac, ymid, img_shape, margin)
@@ -196,9 +194,9 @@ def find_line_pixels(binimg):
             right_line.current_fit = right_fit
 
 
-    sample_loc = img_shape[0]*0.5
-    left_curverad = ((1 + (2*left_fit[0]*sample_loc + left_fit[1])**2)**1.5)/np.absolute(2*left_fit[0])
-    right_curverad = ((1 + (2*right_fit[0]*sample_loc + right_fit[1])**2)**1.5)/np.absolute(2*right_fit[0])
+    y_val = img_shape[0]*0.5
+    left_curverad = ((1 + (2*left_fit[0]*y_val + left_fit[1])**2)**1.5)/np.absolute(2*left_fit[0])
+    right_curverad = ((1 + (2*right_fit[0]*y_val + right_fit[1])**2)**1.5)/np.absolute(2*right_fit[0])
     pixels_to_meters = 720/30  #this is wrong
     avg_curverad = (left_curverad + right_curverad)/2/pixels_to_meters
     left_line.radius_of_curvature = avg_curverad
@@ -253,7 +251,7 @@ def line_search(nzx, nzy, px, ystart_frac, startind, img_shape, margin):
 
 def warper(binary_img):
 
-    # Define calibration box in source (actual) and destination (desired) coordinates
+    # Define source and destination  coordinates
     img_size = (binary_img.shape[1], binary_img.shape[0])
     src = np.float32(
         [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
@@ -266,10 +264,10 @@ def warper(binary_img):
          [(img_size[0] * 3 / 4), img_size[1]],
          [(img_size[0] * 3 / 4), 0]])
 
-    # Compute and apply perpective transform
+    # Compute and apply perspective transform
     M = cv2.getPerspectiveTransform(src, dst)
     Minv =  cv2.getPerspectiveTransform(dst, src)
-    warped = cv2.warpPerspective(binary_img, M, img_size, flags=cv2.INTER_NEAREST)  # keep same size as input image
+    warped = cv2.warpPerspective(binary_img, M, img_size, flags=cv2.INTER_NEAREST)
 
     return Minv, warped
 
@@ -389,16 +387,16 @@ def find_line_pixels(binimg):
             right_line.current_fit = right_fit
 
 
-    sample_loc = img_shape[0]*0.5
-    left_curverad = ((1 + (2*left_fit[0]*sample_loc + left_fit[1])**2)**1.5)/np.absolute(2*left_fit[0])
-    right_curverad = ((1 + (2*right_fit[0]*sample_loc + right_fit[1])**2)**1.5)/np.absolute(2*right_fit[0])
-    pixels_to_meters = 720/30  #this is wrong
+    y_vals = img_shape[0]*0.5
+    left_curverad = ((1 + (2*left_fit[0]* y_vals + left_fit[1])**2)**1.5)/np.absolute(2*left_fit[0])
+    right_curverad = ((1 + (2*right_fit[0]* y_vals + right_fit[1])**2)**1.5)/np.absolute(2*right_fit[0])
+    pixels_to_meters = 720/30
     avg_curverad = (left_curverad + right_curverad)/2/pixels_to_meters
     left_line.radius_of_curvature = avg_curverad
     left_line.deg_per_meter = 360/(2*np.pi*avg_curverad)
 
 
-def pipeline(image):
+def pipeline(image, image_name = ''):
 
     if not os.path.exists("calibration_data.p") :
         calibrate_camera()
@@ -409,6 +407,8 @@ def pipeline(image):
 
     imshape = image.shape
     dst = cv2.undistort(image, mtx, dist, None, mtx)
+    if image_name :
+        cv2.imwrite('output_images/distortion_correction/'+image_name, dst);
 
     vertices = np.array([[(150,imshape[0]),(imshape[1]/2, imshape[0]/2 + 30),
                           (imshape[1]/2, imshape[0]/2 + 30), (imshape[1]-50,imshape[0])]], dtype=np.int32)
@@ -418,31 +418,33 @@ def pipeline(image):
     hls = cv2.cvtColor(masked_dst, cv2.COLOR_RGB2HLS).astype(np.float)
     s_channel = hls[:,:,2]
 
-    cv2.imwrite('s_channel.jpg', s_channel)
     # Sobel x
     sobelx = cv2.Sobel(s_channel, cv2.CV_64F, 1, 0, ksize =3) # Take the derivative in x
     abs_sobelx = np.absolute(sobelx) # Absolute x derivative to accentuate lines away from horizontal
     scaled_sobel = np.uint8(255*abs_sobelx/np.max(abs_sobelx))
 
-    # Threshold x-gradient and red channel for lane pixel selection
+    # Threshold x-gradient and s channel for lane pixel selection
     retval, sxbinary = cv2.threshold(scaled_sobel.astype('uint8'), 10, 100, cv2.THRESH_BINARY)
-    cv2.imwrite('sxbinary.jpg', sxbinary)
 
     retval, s_binary = cv2.threshold(s_channel.astype('uint8'), 190, 230, cv2.THRESH_BINARY)
-    cv2.imwrite('redbinary.jpg', s_binary)
 
-    #retval, redbin = cv2.threshold(dst[:,:,2], 190, 255, cv2.THRESH_BINARY)
-    cv2.imwrite('bitwise_or.jpg', cv2.bitwise_or(s_binary, sxbinary))
     combined_image = cv2.bitwise_or(s_binary, sxbinary)
+
+    if image_name :
+        cv2.imwrite('output_images/thresholded_binary/'+image_name, combined_image)
+
 
 
     # Perspective transform
     Minv, warped = warper(combined_image)
 
+    if image_name :
+        cv2.imwrite('output_images/perspective_transform/'+image_name, warped)
+
     # Find lane pixels
     find_line_pixels(warped)
 
-    # Generate lines to plot on warped image based on fit
+    # calculate radius of curvature
     yfit = np.linspace(0, imshape[0] - 1, imshape[0]).astype('int')
     lfit = left_line.current_fit
     rfit = right_line.current_fit
@@ -450,9 +452,6 @@ def pipeline(image):
     right_xfit = np.clip(np.round(rfit[0]*yfit**2 + rfit[1]*yfit + rfit[2]).astype('int'), 0, imshape[1]-1)
 
     # Update the best fit if new lines were detected
-    # These next steps are effectively a "low-pass filter"
-    # I first update the list of recent detections with the latest detection
-    # Then average the position of the line based on the last smooth=5 detections
 
     smooth = 5
     if left_line.detected:
@@ -496,6 +495,8 @@ def pipeline(image):
     color_binary = np.dstack((warp_copy2, warp_copy1, warp_copy3))
     color_warped = np.dstack((warped, warped, warped))
     binresult = cv2.addWeighted(color_warped, 0.7, color_binary, 1, 0)
+    if image_name :
+        cv2.imwrite('output_images/lane_lines_detected/'+image_name, binresult)
 
     # Unwarp slides back to image space
     unwarp_copy1 = cv2.warpPerspective(warp_copy1, Minv,
@@ -552,7 +553,7 @@ def pipeline(image):
     cv2.putText(line_lr_result,"Radius of Curvature = " + curve_string + '(m)', (50,50),
                 cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2)
     center = image.shape[1]/2
-    pix_to_meter = 1280/3 #here I'm guessing that the base of the image is 3 meters wide
+    pix_to_meter = 1280/3
     vehicle_pos = round((center - (left_line.line_base_pos+right_line.line_base_pos)/2)/pix_to_meter, 2)
     if vehicle_pos < 0:
         pos_string = ' left of center'
@@ -562,25 +563,21 @@ def pipeline(image):
     cv2.putText(line_lr_result,"Vehicle is " + str(np.absolute(vehicle_pos)) + 'm' + pos_string, (50,100),
                 cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2)
 
-    #Minv, warped_orig = warper(image)
-    #return warped
-    #return redgrad_binary
-    #return binresult
     return line_lr_result
 
 
 if __name__ == '__main__':
-    left_line = Line()
-    right_line = Line()
-    image = mpimg.imread("test_images/test1.jpg")
+    images = glob.glob('test_images/*')
+    for fname in images:
+        left_line = Line()
+        right_line = Line()
+        image = cv2.imread(fname)
+        image_name = fname.split('/')[1]
+        result = pipeline(image, image_name)
+        cv2.imwrite('output_images/final_output/'+image_name, result);
 
-    result = pipeline(image)
-    cv2.imwrite("result.jpg", result);
-
-    test_output = 'test.mp4'
+    project_video_output = 'project_video_output.mp4'
     clip = VideoFileClip("project_video.mp4")
-#clip = VideoFileClip("../images_video/bridge_shadow_Highway.mp4")
-#clip = VideoFileClip("../images_video/curvy_mountain.mp4")
-    test_clip = clip.fl_image(pipeline)
-#%time
-    test_clip.write_videofile(test_output, audio=False)
+
+    project_video_clip = clip.fl_image(pipeline)
+    project_video_clip.write_videofile(project_video_output, audio=False)
